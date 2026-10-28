@@ -77,6 +77,8 @@ const errorHandler: ErrorRequestHandler = (error: unknown, _req, res, _next) => 
   } else if (error instanceof NotConnectedError) {
     res.status(503).json({ error: error.message });
   } else if (error instanceof LcuError) {
+    // Keep the client's full answer in the console: it is the only way to diagnose a refusal.
+    console.warn(`[lcu] ${error.message} (HTTP ${error.status})`, JSON.stringify(error.body));
     res.status(502).json({ error: error.message });
   } else if ((error as { type?: string }).type === "entity.parse.failed") {
     res.status(400).json({ error: "Invalid JSON body" });

@@ -1,4 +1,5 @@
 import https from "node:https";
+import { debug } from "../log.js";
 import type { LcuCredentials } from "./lockfile.js";
 
 export const LCU_HOST = "127.0.0.1";
@@ -52,6 +53,7 @@ export class LcuHttpClient {
 
   request<T>(method: Method, path: string, body?: unknown): Promise<T> {
     const payload = body === undefined ? undefined : JSON.stringify(body);
+    if (method !== "GET") debug(`${method} ${path}`, payload ?? "");
 
     return new Promise<T>((resolve, reject) => {
       const req = https.request(
