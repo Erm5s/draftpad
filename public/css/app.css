@@ -432,3 +432,76 @@ h2 {
 .toast.success {
   background: var(--green);
 }
+
+/* ---------- Ready check ---------- */
+
+.ready-check {
+  --progress: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding-top: 24px;
+  text-align: center;
+}
+
+.ready-check h1 {
+  margin: 0;
+  font-size: 1.8rem;
+  color: var(--gold-strong);
+}
+
+.ready-check[data-response="Accepted"] h1 {
+  color: var(--teal);
+}
+
+.ready-check[data-response="Declined"] h1 {
+  color: var(--red);
+}
+
+.accept-ring {
+  display: grid;
+  place-items: center;
+  width: min(72vw, 280px);
+  aspect-ratio: 1;
+  margin: 16px 0;
+  border-radius: 50%;
+  background: conic-gradient(var(--teal) calc(var(--progress) * 360deg), var(--border) 0);
+}
+
+.accept-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: calc(100% - 16px);
+  aspect-ratio: 1;
+  border: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 35%, #1c3a4a, #0e1d29);
+  box-shadow: inset 0 0 0 3px var(--gold);
+  transition: transform 0.1s;
+}
+
+.accept-button:active {
+  transform: scale(0.96);
+}
+
+.accept-label {
+  font-size: 2.2rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gold-strong);
+}
+
+.accept-countdown {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.ready-check > div:last-child {
+  width: 100%;
+}
