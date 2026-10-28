@@ -14,6 +14,8 @@ export interface ChampSelectPlayer {
   position: string;
   name: string | null;
   isLocalPlayer: boolean;
+  /** True while this player has a pick or ban in progress. */
+  isActing: boolean;
 }
 
 export interface ChampSelectAction {
@@ -187,6 +189,7 @@ export class ChampSelectService {
 function normalize(session: LcuSession, pickable: number[], bannable: number[]): ChampSelectState {
   const local = session.localPlayerCellId;
   const actions = session.actions.flat().filter((a) => a.type === "pick" || a.type === "ban");
+  const acting = new Set(actions.filter((a) => a.isInProgress && !a.completed).map((a) => a.actorCellId));
   const own = actions.filter((a) => a.actorCellId === local && !a.completed);
 
   const bans = { ally: new Set<number>(), enemy: new Set<number>() };
@@ -212,8 +215,8 @@ function normalize(session: LcuSession, pickable: number[], bannable: number[]):
     totalTimeMs: session.timer.totalTimeInPhase,
     isInfinite: session.timer.isInfinite,
     localPlayerCellId: local,
-    myTeam: session.myTeam.map((p) => toPlayer(p, local)),
-    theirTeam: session.theirTeam.map((p) => toPlayer(p, local)),
+    myTeam: session.myTeam.map((p) => toPlayer(p, local, acting)),
+    theirTeam: session.theirTeam.map((p) => toPlayer(p, local, acting)),
     bans: { ally: [...bans.ally], enemy: [...bans.enemy] },
     currentAction: toAction(own.find((a) => a.isInProgress)),
     nextPickAction: toAction(own.find((a) => a.type === "pick")),
@@ -224,7 +227,7 @@ function normalize(session: LcuSession, pickable: number[], bannable: number[]):
   };
 }
 
-function toPlayer(player: LcuPlayer, localCellId: number): ChampSelectPlayer {
+function toPlayer(player: LcuPlayer, localCellId: number, acting: Set<number>): ChampSelectPlayer {
   return {
     cellId: player.cellId,
     championId: player.championId,
@@ -232,6 +235,7 @@ function toPlayer(player: LcuPlayer, localCellId: number): ChampSelectPlayer {
     position: player.assignedPosition,
     name: player.gameName || null,
     isLocalPlayer: player.cellId === localCellId,
+    isActing: acting.has(player.cellId),
   };
 }
 
