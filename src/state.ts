@@ -1,11 +1,14 @@
 import { EventEmitter } from "node:events";
 import type { ConnectionStatus } from "./lcu/connector.js";
+import type { ReadyCheckState } from "./services/readyCheck.js";
 
 /** Snapshot pushed to every connected phone. */
 export interface AppState {
   connection: ConnectionStatus;
   /** Raw gameflow phase from the client: None, Lobby, Matchmaking, ReadyCheck, ChampSelect, InProgress... */
   phase: string;
+  readyCheck: ReadyCheckState | null;
+  autoAccept: boolean;
 }
 
 /** Holds the current state and emits a single coalesced `change` per tick. */

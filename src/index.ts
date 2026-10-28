@@ -3,24 +3,31 @@ import qrcode from "qrcode-terminal";
 import { loadConfig } from "./config.js";
 import { LcuConnector } from "./lcu/connector.js";
 import { GAMEFLOW_PHASE_URI, GameflowService } from "./services/gameflow.js";
+import { READY_CHECK_URI, ReadyCheckService } from "./services/readyCheck.js";
 import { createApp } from "./server/app.js";
 import { PinAuth } from "./server/auth.js";
 import { lanAddresses } from "./server/network.js";
 import { attachRealtime } from "./server/realtime.js";
+import { readyCheckRoutes } from "./server/routes/readyCheck.js";
 import { StateStore } from "./state.js";
+import { settingsFile } from "./storage/settings.js";
 
 const config = loadConfig();
 
-const connector = new LcuConnector(config.lockfilePath, [GAMEFLOW_PHASE_URI]);
+const connector = new LcuConnector(config.lockfilePath, [GAMEFLOW_PHASE_URI, READY_CHECK_URI]);
 const store = new StateStore({
   connection: connector.status,
   phase: "None",
+  readyCheck: null,
+  autoAccept: false,
 });
 
 new GameflowService(connector, store);
+const readyCheck = new ReadyCheckService(connector, store, settingsFile(config.dataDir));
+await readyCheck.init();
 
 const auth = new PinAuth(config.pin);
-const app = createApp({ auth, store, routers: [] });
+const app = createApp({ auth, store, routers: [readyCheckRoutes(readyCheck)] });
 const server = createServer(app);
 attachRealtime(server, store, auth);
 
