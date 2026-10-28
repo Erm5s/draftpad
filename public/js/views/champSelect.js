@@ -9,7 +9,7 @@ export class ChampSelectView {
     this.selection = null; // { actionId, championId }
     this.pendingHover = false;
     this.deadline = null;
-    this.runesKey = null;
+    this.runesKey = undefined;
 
     this.phaseEl = h("div", { class: "cs-phase" });
     this.timerEl = h("div", { class: "cs-timer" });
@@ -159,7 +159,7 @@ export class ChampSelectView {
       h(
         "div",
         { class: "slot-text" },
-        h("span", { class: "slot-champ" }, champion?.name ?? (player.isActing ? "Picking…" : "—")),
+        h("span", { class: "slot-champ" }, champion?.name ?? (player.isActing ? "Choosing…" : "—")),
         details && h("span", { class: "slot-details" }, details),
       ),
     );
