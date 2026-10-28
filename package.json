@@ -3,7 +3,6 @@
   "version": "0.1.0",
   "private": true,
   "description": "Mobile remote control for League of Legends champion select, built on the local LCU API.",
-  "license": "MIT",
   "type": "module",
   "main": "dist/index.js",
   "engines": {
