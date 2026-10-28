@@ -1,8 +1,10 @@
+import { ChampSelectView } from "./champSelect.js";
 import { ReadyCheckView } from "./readyCheck.js";
 import { StatusView } from "./status.js";
 
 function viewKey(state) {
   if (!state || state.connection !== "connected") return "offline";
+  if (state.champSelect) return "champSelect";
   if (state.readyCheck && (state.phase === "ReadyCheck" || state.readyCheck.state === "InProgress")) {
     return "readyCheck";
   }
@@ -13,6 +15,7 @@ const VIEWS = {
   offline: StatusView,
   status: StatusView,
   readyCheck: ReadyCheckView,
+  champSelect: ChampSelectView,
 };
 
 /** "Play" tab: swaps between status, ready check and champion select screens. */
