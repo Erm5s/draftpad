@@ -7,6 +7,8 @@ import type { StateStore } from "../state.js";
 export const CHAMP_SELECT_SESSION_URI = "/lol-champ-select/v1/session";
 const PICKABLE_URI = "/lol-champ-select/v1/pickable-champion-ids";
 const BANNABLE_URI = "/lol-champ-select/v1/bannable-champion-ids";
+const MY_SELECTION_URI = "/lol-champ-select/v1/session/my-selection";
+const GAMEFLOW_SESSION_URI = "/lol-gameflow/v1/session";
 
 export interface ChampSelectPlayer {
   cellId: number;
@@ -17,6 +19,8 @@ export interface ChampSelectPlayer {
   isLocalPlayer: boolean;
   /** True while this player has a pick or ban in progress. */
   isActing: boolean;
+  spell1Id: number;
+  spell2Id: number;
 }
 
 export interface ChampSelectAction {
@@ -27,6 +31,8 @@ export interface ChampSelectAction {
 }
 
 export interface ChampSelectState {
+  /** CLASSIC, ARAM... used to offer the right summoner spells. Null until known. */
+  gameMode: string | null;
   /** PLANNING, BAN_PICK, FINALIZATION or GAME_STARTING. */
   phase: string;
   /** Remaining time when the snapshot was taken; the phone runs the countdown. */
@@ -65,6 +71,8 @@ interface LcuPlayer {
   championPickIntent: number;
   assignedPosition: string;
   gameName?: string;
+  spell1Id?: number;
+  spell2Id?: number;
 }
 
 interface LcuSession {
@@ -86,6 +94,7 @@ export class ChampSelectService {
   private bannable: number[] = [];
   private availabilityKey = "";
   private availabilityRequest = 0;
+  private gameMode: string | null = null;
 
   constructor(
     private readonly lcu: LcuConnector,
@@ -119,6 +128,15 @@ export class ChampSelectService {
     await this.patchAction(action.id, { championId, completed: true });
   }
 
+  /** Sets both summoner spells; the first one goes on D, the second on F. */
+  async setSpells(spell1Id: number, spell2Id: number): Promise<void> {
+    this.requireSession();
+    if (![spell1Id, spell2Id].every((id) => Number.isInteger(id) && id > 0) || spell1Id === spell2Id) {
+      throw badRequest("Choose two different summoner spells");
+    }
+    await this.lcu.client.patch(MY_SELECTION_URI, { spell1Id, spell2Id });
+  }
+
   private async refresh(): Promise<void> {
     try {
       this.handle(await this.lcu.client.get<LcuSession>(CHAMP_SELECT_SESSION_URI));
@@ -135,11 +153,14 @@ export class ChampSelectService {
       this.pickable = [];
       this.bannable = [];
       this.availabilityKey = "";
+      this.gameMode = null;
       this.store.update({ champSelect: null });
       return;
     }
 
-    const state = normalize(session, this.pickable, this.bannable);
+    if (!this.store.get().champSelect) void this.loadGameMode();
+
+    const state = normalize(session, this.gameMode, this.pickable, this.bannable);
     this.store.update({ champSelect: state });
 
     // Pickable/bannable lists only change when an action completes, a turn starts or the phase changes.
@@ -166,6 +187,19 @@ export class ChampSelectService {
     const current = this.store.get().champSelect;
     if (current) {
       this.store.update({ champSelect: { ...current, pickable: this.pickable, bannable: this.bannable } });
+    }
+  }
+
+  private async loadGameMode(): Promise<void> {
+    try {
+      const session = await this.lcu.client.get<{ gameData?: { queue?: { gameMode?: string } } }>(
+        GAMEFLOW_SESSION_URI,
+      );
+      this.gameMode = session.gameData?.queue?.gameMode ?? null;
+      const current = this.store.get().champSelect;
+      if (current) this.store.update({ champSelect: { ...current, gameMode: this.gameMode } });
+    } catch (error) {
+      console.warn(`[champ-select] could not load the game mode: ${(error as Error).message}`);
     }
   }
 
@@ -201,7 +235,12 @@ function assertChampionId(championId: number): void {
   }
 }
 
-function normalize(session: LcuSession, pickable: number[], bannable: number[]): ChampSelectState {
+function normalize(
+  session: LcuSession,
+  gameMode: string | null,
+  pickable: number[],
+  bannable: number[],
+): ChampSelectState {
   const local = session.localPlayerCellId;
   const actions = session.actions.flat().filter((a) => a.type === "pick" || a.type === "ban");
   const acting = new Set(actions.filter((a) => a.isInProgress && !a.completed).map((a) => a.actorCellId));
@@ -225,6 +264,7 @@ function normalize(session: LcuSession, pickable: number[], bannable: number[]):
   );
 
   return {
+    gameMode,
     phase: session.timer.phase,
     timeLeftMs: Math.max(0, session.timer.adjustedTimeLeftInPhase),
     totalTimeMs: session.timer.totalTimeInPhase,
@@ -251,6 +291,8 @@ function toPlayer(player: LcuPlayer, localCellId: number, acting: Set<number>): 
     name: player.gameName || null,
     isLocalPlayer: player.cellId === localCellId,
     isActing: acting.has(player.cellId),
+    spell1Id: player.spell1Id ?? 0,
+    spell2Id: player.spell2Id ?? 0,
   };
 }
 

@@ -14,6 +14,12 @@ export function champSelectRoutes(champSelect: ChampSelectService): Router {
     res.status(204).end();
   });
 
+  router.post("/champ-select/spells", async (req, res) => {
+    const body = (req.body ?? {}) as { spell1Id?: unknown; spell2Id?: unknown };
+    await champSelect.setSpells(Number(body.spell1Id), Number(body.spell2Id));
+    res.status(204).end();
+  });
+
   return router;
 }
 
