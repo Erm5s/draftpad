@@ -34,9 +34,10 @@ async function fetchJson(url) {
 export async function loadGameData() {
   const [version] = await fetchJson(`${BASE}/api/versions.json`);
   const cdn = `${BASE}/cdn/${version}`;
-  const [championJson, runeJson] = await Promise.all([
+  const [championJson, runeJson, spellJson] = await Promise.all([
     fetchJson(`${cdn}/data/${LOCALE}/champion.json`),
     fetchJson(`${cdn}/data/${LOCALE}/runesReforged.json`),
+    fetchJson(`${cdn}/data/${LOCALE}/summoner.json`),
   ]);
 
   const champions = Object.values(championJson.data)
@@ -45,6 +46,15 @@ export async function loadGameData() {
       alias: c.id,
       name: c.name,
       image: `${cdn}/img/champion/${c.image.full}`,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  const spells = Object.values(spellJson.data)
+    .map((spell) => ({
+      id: Number(spell.key),
+      name: spell.name,
+      image: `${cdn}/img/spell/${spell.image.full}`,
+      modes: spell.modes,
     }))
     .sort((a, b) => a.name.localeCompare(b.name));
 
@@ -76,5 +86,7 @@ export async function loadGameData() {
     stylesById: new Map(styles.map((s) => [s.id, s])),
     perks,
     shardRows: SHARD_ROWS,
+    spells,
+    spellsById: new Map(spells.map((s) => [s.id, s])),
   };
 }

@@ -1,5 +1,6 @@
 import { api } from "../api.js";
 import { createChampionGrid } from "../components/championGrid.js";
+import { openSpellPicker } from "../components/spellPicker.js";
 import { update } from "../store.js";
 import { h, POSITIONS, toast, vibrate, withBusy } from "../ui.js";
 
@@ -10,12 +11,14 @@ export class ChampSelectView {
     this.pendingHover = false;
     this.deadline = null;
     this.runesKey = undefined;
+    this.spellsKey = undefined;
 
     this.phaseEl = h("div", { class: "cs-phase" });
     this.timerEl = h("div", { class: "cs-timer" });
     this.allyEl = h("div", { class: "team ally" });
     this.enemyEl = h("div", { class: "team enemy" });
     this.runesEl = h("div", { class: "cs-runes" });
+    this.spellsEl = h("div", { class: "cs-spells" });
     this.lockedEl = h("div", { class: "cs-locked" });
 
     this.searchEl = h("input", {
@@ -45,6 +48,7 @@ export class ChampSelectView {
       { class: "champ-select" },
       h("div", { class: "cs-head" }, this.phaseEl, this.timerEl),
       h("div", { class: "cs-teams" }, this.allyEl, this.enemyEl),
+      this.spellsEl,
       this.runesEl,
       this.lockedEl,
       this.pickArea,
@@ -91,6 +95,7 @@ export class ChampSelectView {
     this.renderActionBar();
     this.renderLocked();
     this.renderRunes();
+    this.renderSpells();
     this.tick();
   }
 
@@ -273,6 +278,48 @@ export class ChampSelectView {
       keystone && h("img", { class: "cs-runes-keystone", src: keystone.icon, alt: "" }),
       presets.length > 1 ? picker : h("span", { class: "cs-runes-text" }, presets[0].name),
       apply,
+    );
+  }
+
+  renderSpells() {
+    const me = this.me;
+    const visible = Boolean(me) && this.cs.phase !== "GAME_STARTING";
+    const key = visible ? `${me.spell1Id}:${me.spell2Id}:${this.cs.gameMode}` : null;
+    if (key === this.spellsKey) return;
+    this.spellsKey = key;
+
+    this.spellsEl.hidden = !visible;
+    if (!visible) return;
+
+    const current = [me.spell1Id, me.spell2Id];
+    const choose = (slot) =>
+      openSpellPicker(this.data, {
+        gameMode: this.cs.gameMode,
+        currentId: current[slot],
+        onPick: async (id) => {
+          const next = [...current];
+          // Picking the spell of the other slot swaps them, like in the client.
+          if (next[1 - slot] === id) next[1 - slot] = next[slot];
+          next[slot] = id;
+          try {
+            await api("POST", "/champ-select/spells", { spell1Id: next[0], spell2Id: next[1] });
+          } catch (error) {
+            toast(error.message, "error");
+          }
+        },
+      });
+
+    this.spellsEl.replaceChildren(
+      h("span", { class: "cs-spells-label" }, "Spells"),
+      ...current.map((id, slot) => {
+        const spell = this.data.spellsById.get(id);
+        return h(
+          "button",
+          { type: "button", class: "spell-slot", onclick: () => choose(slot), "aria-label": `Spell ${slot === 0 ? "D" : "F"}` },
+          spell ? h("img", { src: spell.image, alt: "" }) : h("span", {}, "?"),
+          h("small", {}, spell?.name ?? "Choose"),
+        );
+      }),
     );
   }
 
