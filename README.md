@@ -27,12 +27,21 @@ The phone never talks to the League client directly. Draftpad only uses the offi
 git clone <repository-url> draftpad
 cd draftpad
 npm install
-npm run build
 ```
 
 ## Usage
 
 ```bash
+npm start
+```
+
+`npm start` compiles the server before starting it, so the server always matches the code.
+
+To update:
+
+```bash
+git pull
+npm install
 npm start
 ```
 
