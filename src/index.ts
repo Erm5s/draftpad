@@ -2,6 +2,7 @@ import { createServer } from "node:http";
 import qrcode from "qrcode-terminal";
 import { loadConfig } from "./config.js";
 import { LcuConnector } from "./lcu/connector.js";
+import { debug, DEBUG } from "./log.js";
 import { CHAMP_SELECT_SESSION_URI, ChampSelectService } from "./services/champSelect.js";
 import { GAMEFLOW_PHASE_URI, GameflowService } from "./services/gameflow.js";
 import { READY_CHECK_URI, ReadyCheckService } from "./services/readyCheck.js";
@@ -24,6 +25,10 @@ const connector = new LcuConnector(config.lockfilePath, [
   READY_CHECK_URI,
   CHAMP_SELECT_SESSION_URI,
 ]);
+if (DEBUG) {
+  connector.on("event", (event) => debug(`event ${event.eventType} ${event.uri}`, JSON.stringify(event.data)?.slice(0, 300)));
+}
+
 const store = new StateStore({
   connection: connector.status,
   phase: "None",
