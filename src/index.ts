@@ -2,32 +2,44 @@ import { createServer } from "node:http";
 import qrcode from "qrcode-terminal";
 import { loadConfig } from "./config.js";
 import { LcuConnector } from "./lcu/connector.js";
+import { CHAMP_SELECT_SESSION_URI, ChampSelectService } from "./services/champSelect.js";
 import { GAMEFLOW_PHASE_URI, GameflowService } from "./services/gameflow.js";
 import { READY_CHECK_URI, ReadyCheckService } from "./services/readyCheck.js";
 import { createApp } from "./server/app.js";
 import { PinAuth } from "./server/auth.js";
 import { lanAddresses } from "./server/network.js";
 import { attachRealtime } from "./server/realtime.js";
+import { champSelectRoutes } from "./server/routes/champSelect.js";
 import { readyCheckRoutes } from "./server/routes/readyCheck.js";
 import { StateStore } from "./state.js";
 import { settingsFile } from "./storage/settings.js";
 
 const config = loadConfig();
 
-const connector = new LcuConnector(config.lockfilePath, [GAMEFLOW_PHASE_URI, READY_CHECK_URI]);
+const connector = new LcuConnector(config.lockfilePath, [
+  GAMEFLOW_PHASE_URI,
+  READY_CHECK_URI,
+  CHAMP_SELECT_SESSION_URI,
+]);
 const store = new StateStore({
   connection: connector.status,
   phase: "None",
   readyCheck: null,
   autoAccept: false,
+  champSelect: null,
 });
 
 new GameflowService(connector, store);
 const readyCheck = new ReadyCheckService(connector, store, settingsFile(config.dataDir));
 await readyCheck.init();
+const champSelect = new ChampSelectService(connector, store);
 
 const auth = new PinAuth(config.pin);
-const app = createApp({ auth, store, routers: [readyCheckRoutes(readyCheck)] });
+const app = createApp({
+  auth,
+  store,
+  routers: [readyCheckRoutes(readyCheck), champSelectRoutes(champSelect)],
+});
 const server = createServer(app);
 attachRealtime(server, store, auth);
 

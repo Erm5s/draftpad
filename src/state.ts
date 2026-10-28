@@ -1,5 +1,6 @@
 import { EventEmitter } from "node:events";
 import type { ConnectionStatus } from "./lcu/connector.js";
+import type { ChampSelectState } from "./services/champSelect.js";
 import type { ReadyCheckState } from "./services/readyCheck.js";
 
 /** Snapshot pushed to every connected phone. */
@@ -9,6 +10,7 @@ export interface AppState {
   phase: string;
   readyCheck: ReadyCheckState | null;
   autoAccept: boolean;
+  champSelect: ChampSelectState | null;
 }
 
 /** Holds the current state and emits a single coalesced `change` per tick. */
