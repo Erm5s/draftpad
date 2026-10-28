@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0b1118" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <title>Draftpad</title>
+    <link rel="icon" href="icon.svg" type="image/svg+xml" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="stylesheet" href="css/app.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">Draft<span>pad</span></div>
+      <div id="status" class="status"></div>
+    </header>
+    <div id="banner" class="banner" hidden>Reconnecting to Draftpad…</div>
+
+    <main id="app" class="app">
+      <section id="tab-play" class="tab"></section>
+      <section id="tab-runes" class="tab" hidden></section>
+    </main>
+
+    <nav id="tabbar" class="tabbar" hidden>
+      <button type="button" data-tab="play" class="active">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 4 6v6c0 5 3.4 8.6 8 10 4.6-1.4 8-5 8-10V6l-8-4Z" /></svg>
+        Play
+      </button>
+      <button type="button" data-tab="runes">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 6 12l6 10 6-10-6-10Zm0 5 3 5-3 5-3-5 3-5Z" /></svg>
+        Runes
+      </button>
+    </nav>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script type="module" src="js/main.js"></script>
+  </body>
+</html>
