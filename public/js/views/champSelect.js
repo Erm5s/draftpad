@@ -182,8 +182,10 @@ export class ChampSelectView {
     if (!action) return;
 
     const list = action.type === "ban" ? this.cs.bannable : this.cs.pickable;
-    // While the lists are loading, show everything rather than an empty grid.
-    const allowed = list.length > 0 ? new Set(list) : null;
+    // While the lists load, or if they match no known champion, show everything rather than an
+    // empty grid: the League client still rejects champions that are not allowed.
+    const known = list.filter((id) => this.data.championsById.has(id));
+    const allowed = known.length > 0 ? new Set(known) : null;
     const taken = new Set(this.cs.unavailable);
 
     const visible = this.grid.filter(this.searchEl.value, (id) => (!allowed || allowed.has(id)) && !taken.has(id));

@@ -1,5 +1,6 @@
 import { LcuError } from "../lcu/client.js";
 import type { LcuConnector } from "../lcu/connector.js";
+import { debug } from "../log.js";
 import { badRequest, HttpError } from "../server/errors.js";
 import type { StateStore } from "../state.js";
 
@@ -84,6 +85,7 @@ export class ChampSelectService {
   private pickable: number[] = [];
   private bannable: number[] = [];
   private availabilityKey = "";
+  private availabilityRequest = 0;
 
   constructor(
     private readonly lcu: LcuConnector,
@@ -103,7 +105,7 @@ export class ChampSelectService {
     const action = session.currentAction ?? session.nextPickAction;
     if (!action) throw new HttpError(409, "No pick or ban to prepare");
 
-    this.assertAvailable(session, action.type, championId);
+    assertChampionId(championId);
     await this.patchAction(action.id, { championId });
   }
 
@@ -113,7 +115,7 @@ export class ChampSelectService {
     const action = session.currentAction;
     if (!action) throw new HttpError(409, "It is not your turn");
 
-    this.assertAvailable(session, action.type, championId);
+    assertChampionId(championId);
     await this.patchAction(action.id, { championId, completed: true });
   }
 
@@ -140,7 +142,7 @@ export class ChampSelectService {
     const state = normalize(session, this.pickable, this.bannable);
     this.store.update({ champSelect: state });
 
-    // Pickable/bannable lists only change when an action completes or a turn starts.
+    // Pickable/bannable lists only change when an action completes, a turn starts or the phase changes.
     const key = availabilityKey(session);
     if (key !== this.availabilityKey) {
       this.availabilityKey = key;
@@ -149,18 +151,35 @@ export class ChampSelectService {
   }
 
   private async refreshAvailability(): Promise<void> {
-    try {
-      const [pickable, bannable] = await Promise.all([
-        this.lcu.client.get<number[]>(PICKABLE_URI),
-        this.lcu.client.get<number[]>(BANNABLE_URI),
-      ]);
-      this.pickable = pickable;
-      this.bannable = bannable;
+    const request = ++this.availabilityRequest;
+    // Load both lists independently: one failing must not keep the other stale.
+    const [pickable, bannable] = await Promise.all([
+      this.fetchChampionIds(PICKABLE_URI),
+      this.fetchChampionIds(BANNABLE_URI),
+    ]);
+    if (request !== this.availabilityRequest) return;
 
-      const current = this.store.get().champSelect;
-      if (current) this.store.update({ champSelect: { ...current, pickable, bannable } });
+    if (pickable) this.pickable = pickable;
+    if (bannable) this.bannable = bannable;
+    debug(`champ-select: ${this.pickable.length} pickable, ${this.bannable.length} bannable`);
+
+    const current = this.store.get().champSelect;
+    if (current) {
+      this.store.update({ champSelect: { ...current, pickable: this.pickable, bannable: this.bannable } });
+    }
+  }
+
+  private async fetchChampionIds(uri: string): Promise<number[] | null> {
+    try {
+      const ids = await this.lcu.client.get<unknown>(uri);
+      if (!Array.isArray(ids)) {
+        console.warn(`[champ-select] unexpected response from ${uri}: ${JSON.stringify(ids)?.slice(0, 200)}`);
+        return null;
+      }
+      return ids.map(Number).filter((id) => Number.isInteger(id) && id > 0);
     } catch (error) {
-      console.warn(`[champ-select] could not load available champions: ${(error as Error).message}`);
+      console.warn(`[champ-select] could not load ${uri}: ${(error as Error).message}`);
+      return null;
     }
   }
 
@@ -170,19 +189,15 @@ export class ChampSelectService {
     return session;
   }
 
-  private assertAvailable(session: ChampSelectState, type: "pick" | "ban", championId: number): void {
-    if (!Number.isInteger(championId) || championId <= 0) {
-      throw badRequest("`championId` must be a positive integer");
-    }
-    const allowed = type === "pick" ? session.pickable : session.bannable;
-    // Lists may still be loading; let the client be the judge in that case.
-    if (allowed.length > 0 && !allowed.includes(championId)) {
-      throw new HttpError(409, `This champion cannot be ${type === "pick" ? "picked" : "banned"}`);
-    }
-  }
-
   private async patchAction(actionId: number, body: { championId: number; completed?: boolean }) {
     await this.lcu.client.patch(`${CHAMP_SELECT_SESSION_URI}/actions/${actionId}`, body);
+  }
+}
+
+/** Availability is enforced by the League client itself, which returns a clear error. */
+function assertChampionId(championId: number): void {
+  if (!Number.isInteger(championId) || championId <= 0) {
+    throw badRequest("`championId` must be a positive integer");
   }
 }
 
@@ -250,7 +265,7 @@ function toAction(action: LcuAction | undefined): ChampSelectAction | null {
 }
 
 function availabilityKey(session: LcuSession): string {
-  return session.actions
+  return session.timer.phase + "|" + session.actions
     .flat()
     .map((a) => `${a.id}:${a.completed ? a.championId : 0}:${a.isInProgress ? 1 : 0}`)
     .join(",");
