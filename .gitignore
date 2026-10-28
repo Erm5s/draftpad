@@ -1,0 +1,8 @@
+node_modules/
+dist/
+data/
+config.json
+*.log
+bun.lock
+bun.lockb
+.claude/
