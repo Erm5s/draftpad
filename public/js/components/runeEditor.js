@@ -22,7 +22,8 @@ export function openRuneEditor({ data, title, initial, defaultName, onSave }) {
     const primary = data.stylesById.get(page.primaryStyleId);
     const secondary = data.stylesById.get(page.subStyleId);
 
-    content.replaceChildren(
+    // Rows are built as nested arrays: flatten them before inserting.
+    const children = [
       h("label", { class: "field-label" }, "Name"),
       nameInput,
 
@@ -69,7 +70,8 @@ export function openRuneEditor({ data, title, initial, defaultName, onSave }) {
         page.shards[index] = id;
         render();
       })),
-    );
+    ];
+    content.replaceChildren(...children.flat().filter(Boolean));
 
     const missing = missingParts(page);
     saveButton.disabled = missing.length > 0;
