@@ -71,8 +71,9 @@ function authMessage(result: "invalid" | "locked"): string {
   return result === "locked" ? "Too many attempts, try again in a minute" : "Invalid PIN";
 }
 
-const errorHandler: ErrorRequestHandler = (error: unknown, _req, res, _next) => {
+const errorHandler: ErrorRequestHandler = (error: unknown, req, res, _next) => {
   if (error instanceof HttpError) {
+    console.warn(`[api] ${req.method} ${req.originalUrl} refused: ${error.message}`);
     res.status(error.status).json({ error: error.message });
   } else if (error instanceof NotConnectedError) {
     res.status(503).json({ error: error.message });

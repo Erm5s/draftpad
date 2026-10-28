@@ -1,3 +1,5 @@
+import { mkdir, writeFile } from "node:fs/promises";
+import path from "node:path";
 import { LcuError } from "../lcu/client.js";
 import type { LcuConnector } from "../lcu/connector.js";
 import { debug } from "../log.js";
@@ -95,10 +97,13 @@ export class ChampSelectService {
   private availabilityKey = "";
   private availabilityRequest = 0;
   private gameMode: string | null = null;
+  private snapshotTimer: NodeJS.Timeout | null = null;
 
+  /** `snapshotFile` receives the raw session from the client, to diagnose unexpected data. */
   constructor(
     private readonly lcu: LcuConnector,
     private readonly store: StateStore,
+    private readonly snapshotFile: string,
   ) {
     lcu.on("connected", () => void this.refresh());
     lcu.on("disconnected", () => this.handle(null));
@@ -169,6 +174,7 @@ export class ChampSelectService {
 
     const state = normalize(session, this.gameMode, this.pickable, this.bannable);
     this.store.update({ champSelect: state });
+    this.scheduleSnapshot(session);
 
     // Pickable/bannable lists only change when an action completes, a turn starts or the phase changes.
     const key = availabilityKey(session);
@@ -195,6 +201,22 @@ export class ChampSelectService {
     if (current) {
       this.store.update({ champSelect: { ...current, pickable: this.pickable, bannable: this.bannable } });
     }
+  }
+
+  private scheduleSnapshot(session: LcuSession): void {
+    if (this.snapshotTimer) clearTimeout(this.snapshotTimer);
+    this.snapshotTimer = setTimeout(() => {
+      const snapshot = {
+        savedAt: new Date().toISOString(),
+        gameMode: this.gameMode,
+        pickable: this.pickable,
+        bannable: this.bannable,
+        session,
+      };
+      mkdir(path.dirname(this.snapshotFile), { recursive: true })
+        .then(() => writeFile(this.snapshotFile, JSON.stringify(snapshot, null, 2)))
+        .catch((error: Error) => console.warn(`[champ-select] could not save snapshot: ${error.message}`));
+    }, 1_000);
   }
 
   private async loadGameMode(): Promise<void> {

@@ -1,4 +1,5 @@
 import { createServer } from "node:http";
+import path from "node:path";
 import qrcode from "qrcode-terminal";
 import { loadConfig } from "./config.js";
 import { LcuConnector } from "./lcu/connector.js";
@@ -40,7 +41,11 @@ const store = new StateStore({
 new GameflowService(connector, store);
 const readyCheck = new ReadyCheckService(connector, store, settingsFile(config.dataDir));
 await readyCheck.init();
-const champSelect = new ChampSelectService(connector, store);
+const champSelect = new ChampSelectService(
+  connector,
+  store,
+  path.join(config.dataDir, "champ-select-snapshot.json"),
+);
 const runes = new RuneService(connector);
 const runePresets = new RunePresetStore(config.dataDir);
 
