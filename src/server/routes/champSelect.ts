@@ -16,7 +16,10 @@ export function champSelectRoutes(champSelect: ChampSelectService): Router {
 
   router.post("/champ-select/spells", async (req, res) => {
     const body = (req.body ?? {}) as { spell1Id?: unknown; spell2Id?: unknown };
-    await champSelect.setSpells(Number(body.spell1Id), Number(body.spell2Id));
+    await champSelect.setSpells({
+      ...(body.spell1Id !== undefined && { spell1Id: Number(body.spell1Id) }),
+      ...(body.spell2Id !== undefined && { spell2Id: Number(body.spell2Id) }),
+    });
     res.status(204).end();
   });
 

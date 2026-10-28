@@ -297,12 +297,14 @@ export class ChampSelectView {
         gameMode: this.cs.gameMode,
         currentId: current[slot],
         onPick: async (id) => {
-          const next = [...current];
+          const keys = ["spell1Id", "spell2Id"];
           // Picking the spell of the other slot swaps them, like in the client.
-          if (next[1 - slot] === id) next[1 - slot] = next[slot];
-          next[slot] = id;
+          const body =
+            current[1 - slot] === id && current[slot] > 0
+              ? { [keys[slot]]: id, [keys[1 - slot]]: current[slot] }
+              : { [keys[slot]]: id };
           try {
-            await api("POST", "/champ-select/spells", { spell1Id: next[0], spell2Id: next[1] });
+            await api("POST", "/champ-select/spells", body);
           } catch (error) {
             toast(error.message, "error");
           }

@@ -128,13 +128,20 @@ export class ChampSelectService {
     await this.patchAction(action.id, { championId, completed: true });
   }
 
-  /** Sets both summoner spells; the first one goes on D, the second on F. */
-  async setSpells(spell1Id: number, spell2Id: number): Promise<void> {
+  /**
+   * Sets one or both summoner spells (spell1 goes on D, spell2 on F).
+   * Sending a single slot keeps working when the current spells are unknown.
+   */
+  async setSpells(spells: { spell1Id?: number; spell2Id?: number }): Promise<void> {
     this.requireSession();
-    if (![spell1Id, spell2Id].every((id) => Number.isInteger(id) && id > 0) || spell1Id === spell2Id) {
+    const ids = Object.values(spells);
+    if (ids.length === 0 || !ids.every((id) => Number.isInteger(id) && id > 0)) {
+      throw badRequest("Invalid summoner spell");
+    }
+    if (spells.spell1Id !== undefined && spells.spell1Id === spells.spell2Id) {
       throw badRequest("Choose two different summoner spells");
     }
-    await this.lcu.client.patch(MY_SELECTION_URI, { spell1Id, spell2Id });
+    await this.lcu.client.patch(MY_SELECTION_URI, spells);
   }
 
   private async refresh(): Promise<void> {
