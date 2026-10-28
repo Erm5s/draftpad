@@ -36,7 +36,9 @@ export function openLcuSocket(
       resolve(socket);
     });
 
-    socket.once("error", reject);
+    // Keep a listener for the socket's whole life: an unhandled `error` event would crash the process.
+    // Rejecting after the promise settled is a no-op.
+    socket.on("error", reject);
 
     socket.on("message", (raw) => {
       const event = parseEvent(raw.toString());
