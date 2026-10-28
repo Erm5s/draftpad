@@ -4,6 +4,7 @@ import { app, reloadPresets, subscribe, update } from "./store.js";
 import { h, toast } from "./ui.js";
 import { showLogin } from "./views/login.js";
 import { PlayView } from "./views/play.js";
+import { RunesView } from "./views/runes.js";
 
 const PHASE_LABELS = {
   None: "Idle",
@@ -100,9 +101,11 @@ async function main() {
   }
 
   const play = new PlayView(playRoot);
+  const runes = new RunesView(document.getElementById("tab-runes"));
   subscribe((state) => {
     renderStatus();
     if (state.state) play.update(state);
+    runes.update(state);
   });
   setupTabs();
 
