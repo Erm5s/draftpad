@@ -82,12 +82,16 @@ export function connectRealtime({ onState, onOnline }) {
     };
   };
 
-  // Phones suspend timers in the background: reconnect as soon as the page is visible again.
+  // A phone that slept may keep a dead socket that still looks open:
+  // always start a fresh connection, which also sends the latest state.
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible" && socket?.readyState === WebSocket.CLOSED) {
-      attempt = 0;
-      open();
+    if (document.visibilityState !== "visible" || socket?.readyState === WebSocket.CONNECTING) return;
+    if (socket) {
+      socket.onclose = null;
+      socket.close();
     }
+    attempt = 0;
+    open();
   });
 
   open();

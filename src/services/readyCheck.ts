@@ -1,5 +1,7 @@
 import { LcuError } from "../lcu/client.js";
 import type { LcuConnector } from "../lcu/connector.js";
+import { debug } from "../log.js";
+import { GAMEFLOW_PHASE_URI } from "./gameflow.js";
 import type { StateStore } from "../state.js";
 import type { JsonFile } from "../storage/jsonFile.js";
 import type { Settings } from "../storage/settings.js";
@@ -32,8 +34,12 @@ export class ReadyCheckService {
     lcu.on("connected", () => void this.refresh());
     lcu.on("disconnected", () => store.update({ readyCheck: null }));
     lcu.on("event", (event) => {
-      if (event.uri !== READY_CHECK_URI) return;
-      this.handle(event.eventType === "Delete" ? null : (event.data as LcuReadyCheck | null));
+      if (event.uri === READY_CHECK_URI) {
+        this.handle(event.eventType === "Delete" ? null : (event.data as LcuReadyCheck | null));
+      } else if (event.uri === GAMEFLOW_PHASE_URI && event.data === "ReadyCheck") {
+        // Do not rely only on the ready-check event: fetch it as soon as the phase says a match was found.
+        void this.refresh();
+      }
     });
   }
 
@@ -70,6 +76,7 @@ export class ReadyCheckService {
   }
 
   private handle(data: LcuReadyCheck | null): void {
+    debug("ready-check", JSON.stringify(data));
     const readyCheck = data && data.state !== "Invalid" ? normalize(data) : null;
     this.store.update({ readyCheck });
     if (readyCheck) this.maybeAutoAccept(readyCheck);

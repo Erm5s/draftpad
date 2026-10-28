@@ -37,16 +37,18 @@ export class ReadyCheckView {
   }
 
   update(app) {
+    // The details can lag behind the gameflow phase: show the button anyway.
     const readyCheck = app.state.readyCheck;
-    if (!readyCheck) return;
 
-    // Re-sync the countdown only when it drifted, to keep the animation smooth.
-    const startedAt = performance.now() - readyCheck.timer * 1000;
-    if (this.startedAt === null || Math.abs(startedAt - this.startedAt) > 1000) {
-      this.startedAt = startedAt;
+    if (readyCheck) {
+      // Re-sync the countdown only when it drifted, to keep the animation smooth.
+      const startedAt = performance.now() - readyCheck.timer * 1000;
+      if (this.startedAt === null || Math.abs(startedAt - this.startedAt) > 1000) {
+        this.startedAt = startedAt;
+      }
     }
 
-    const response = readyCheck.playerResponse;
+    const response = readyCheck?.playerResponse ?? "None";
     this.el.dataset.response = response;
     this.ring.hidden = response !== "None";
     this.declineButton.hidden = response !== "None";

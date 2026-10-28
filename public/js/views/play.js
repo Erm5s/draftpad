@@ -5,9 +5,7 @@ import { StatusView } from "./status.js";
 function viewKey(state) {
   if (!state || state.connection !== "connected") return "offline";
   if (state.champSelect) return "champSelect";
-  if (state.readyCheck && (state.phase === "ReadyCheck" || state.readyCheck.state === "InProgress")) {
-    return "readyCheck";
-  }
+  if (state.phase === "ReadyCheck" || state.readyCheck?.state === "InProgress") return "readyCheck";
   return "status";
 }
 
