@@ -5,13 +5,16 @@ import { LcuConnector } from "./lcu/connector.js";
 import { CHAMP_SELECT_SESSION_URI, ChampSelectService } from "./services/champSelect.js";
 import { GAMEFLOW_PHASE_URI, GameflowService } from "./services/gameflow.js";
 import { READY_CHECK_URI, ReadyCheckService } from "./services/readyCheck.js";
+import { RuneService } from "./services/runes.js";
 import { createApp } from "./server/app.js";
 import { PinAuth } from "./server/auth.js";
 import { lanAddresses } from "./server/network.js";
 import { attachRealtime } from "./server/realtime.js";
 import { champSelectRoutes } from "./server/routes/champSelect.js";
 import { readyCheckRoutes } from "./server/routes/readyCheck.js";
+import { runeRoutes } from "./server/routes/runes.js";
 import { StateStore } from "./state.js";
+import { RunePresetStore } from "./storage/runePresets.js";
 import { settingsFile } from "./storage/settings.js";
 
 const config = loadConfig();
@@ -33,12 +36,18 @@ new GameflowService(connector, store);
 const readyCheck = new ReadyCheckService(connector, store, settingsFile(config.dataDir));
 await readyCheck.init();
 const champSelect = new ChampSelectService(connector, store);
+const runes = new RuneService(connector);
+const runePresets = new RunePresetStore(config.dataDir);
 
 const auth = new PinAuth(config.pin);
 const app = createApp({
   auth,
   store,
-  routers: [readyCheckRoutes(readyCheck), champSelectRoutes(champSelect)],
+  routers: [
+    readyCheckRoutes(readyCheck),
+    champSelectRoutes(champSelect),
+    runeRoutes(runes, runePresets),
+  ],
 });
 const server = createServer(app);
 attachRealtime(server, store, auth);
